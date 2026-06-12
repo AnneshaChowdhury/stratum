@@ -14,8 +14,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SchemaMorph",
-    description="AI agent that ingests unstructured data, infers schemas iteratively, detects drift, and runs data quality checks — powered by Llama 3.3 70B via Groq (free).",
+    title="Stratum",
+    description="AI agent that ingests unstructured data (CSV, JSON, PDF, Kafka), infers schemas iteratively, detects drift, and runs data quality checks — powered by Llama 3.3 70B via Groq.",
     version="0.1.0",
     lifespan=lifespan,
 )

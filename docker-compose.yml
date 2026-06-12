@@ -4,15 +4,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: schemamorph
-      POSTGRES_PASSWORD: schemamorph
-      POSTGRES_DB: schemamorph
+      POSTGRES_USER: stratum
+      POSTGRES_PASSWORD: stratum
+      POSTGRES_DB: stratum
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U schemamorph"]
+      test: ["CMD-SHELL", "pg_isready -U stratum"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,9 +22,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://schemamorph:schemamorph@db:5432/schemamorph
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: mistral
+      DATABASE_URL: postgresql+asyncpg://stratum:stratum@db:5432/stratum
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: llama-3.3-70b-versatile
     depends_on:
       db:
         condition: service_healthy
