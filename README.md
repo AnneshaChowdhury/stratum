@@ -229,21 +229,6 @@ All four agents run sequentially with a single file upload. On the second upload
 
 ---
 
-## Roadmap
-
-- [ ] Kafka topic ingestion (real-time streaming)
-- [ ] REST API poller (ingest from any endpoint on a schedule)
-- [ ] Downstream impact analysis (what breaks when schema changes)
-- [ ] Natural language model editing ("make this table track history")
-- [ ] Data contract auto-generation + enforcement
-- [ ] PII auto-detection and masking
-- [ ] Confidence-scored active learning (flag low-confidence fields for human review)
-- [ ] Synthetic data generation for schema testing
-- [ ] Multi-modal ingestion (images via OCR, audio transcripts)
-- [ ] Web UI dashboard
-
----
-
 ## Docker
 
 ```bash
