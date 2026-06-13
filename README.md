@@ -16,7 +16,7 @@ Most data pipelines break the moment the data changes. Schema drift silently cor
 
 **Stratum solves this.** It's an AI agent that:
 
-1. **Ingests** raw data from any source — CSV, JSON, PDF, Kafka (coming soon), REST APIs
+1. **Ingests** raw data from any source — CSV, JSON, PDF, Kafka streams, REST APIs
 2. **Infers** a full schema with semantic field labels, types, and relationships — powered by LLM
 3. **Models** your data into a normalized relational structure with DDL-ready output
 4. **Detects drift** when your data changes — classifying every change as safe, risky, or breaking
@@ -31,7 +31,7 @@ No YAML. No manual schema definitions. No data contracts written by hand. Stratu
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        INGESTION LAYER                          │
-│          CSV  ·  JSON  ·  PDF  ·  Kafka (soon)  ·  APIs        │
+│          CSV  ·  JSON  ·  PDF  ·  Kafka  ·  APIs               │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -121,49 +121,89 @@ Fields aren't just `type: string`. Stratum understands that `email` means an ema
 
 ## Getting Started
 
-### Prerequisites
+### One-command quickstart (recommended)
+
+The fastest way to run Stratum. All you need is Docker and a free Groq API key.
+
+**1. Get a free Groq API key** at [console.groq.com](https://console.groq.com) — no credit card required.
+
+**2. Clone and start:**
+
+```bash
+git clone git@github.com:AnneshaChowdhury/stratum.git
+cd stratum
+GROQ_API_KEY=gsk_... docker compose up
+```
+
+That's it. Docker Compose spins up PostgreSQL, Kafka, and the API, then automatically runs a seed job that posts demo data through the full agent pipeline and prints the results:
+
+```
+╭──────────────────────────────────────────────────────╮
+│  Stratum                                             │
+│  AI-powered schema inference, drift detection        │
+│  & data quality                                      │
+╰──────────────────────────────────────────────────────╯
+
+API ready — model: llama-3.3-70b-versatile, backend: groq
+Ingesting customers.csv...
+  ✓ Done — schema version 1
+Ingesting orders.json...
+  ✓ Done — schema version 1
+
+┌─ customers ────────────────────────────────────────────┐
+│ Customer subscription and contact records              │
+│                                                        │
+│ Schema — 1 table, 9 fields inferred                   │
+│  Table      Fields  Description                        │
+│  customers  9       Customer subscription records      │
+│                                                        │
+│ Quality — 6 pass  0 warn  0 fail                      │
+└────────────────────────────────────────────────────────┘
+
+╭──────────────────────────────────╮
+│  Stratum is ready!               │
+│                                  │
+│  API:   http://api:8000          │
+│  Docs:  http://api:8000/docs     │
+╰──────────────────────────────────╯
+```
+
+Open **http://localhost:8000/docs** to explore the API.
+
+---
+
+### Local development (without Docker)
+
+#### Prerequisites
 
 - Python 3.11+
-- PostgreSQL 16
-- A free [Groq API key](https://console.groq.com) (no credit card required)
+- PostgreSQL 16 running locally
+- A free [Groq API key](https://console.groq.com)
 
-### 1. Clone & install
+#### Setup
 
 ```bash
 git clone git@github.com:AnneshaChowdhury/stratum.git
 cd stratum
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
+cp .env.example .env   # then add your GROQ_API_KEY
 ```
 
-### 2. Configure
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://stratum@localhost:5432/stratum
-GROQ_API_KEY=gsk_your_key_from_console.groq.com
-GROQ_MODEL=llama-3.3-70b-versatile
-```
-
-### 3. Set up the database
+Create the database:
 
 ```bash
 createuser -s stratum
 createdb -U stratum stratum
 ```
 
-### 4. Run
+Run:
 
 ```bash
-uvicorn app.main:app --reload --port 8100
+uvicorn app.main:app --reload --port 8000
 ```
 
-API is live at `http://localhost:8100` — interactive docs at `http://localhost:8100/docs`
+API is live at `http://localhost:8000` — interactive docs at `http://localhost:8000/docs`
 
 ---
 
@@ -229,13 +269,19 @@ All four agents run sequentially with a single file upload. On the second upload
 
 ---
 
-## Docker
+## Kafka ingestion
+
+Register a topic and Stratum starts consuming it in real-time — running the full agent pipeline on each batch of messages:
 
 ```bash
-docker compose up
+curl -X POST http://localhost:8000/api/v1/kafka/topics \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "events", "bootstrap_servers": "localhost:9092"}'
 ```
 
-Spins up PostgreSQL + the API. Set `GROQ_API_KEY` in your environment first.
+Stratum batches messages (50 messages or 5 seconds, whichever comes first), runs inference → modeling → quality → drift on each batch, and persists versioned schemas as the message shape evolves.
+
+Active topics survive restarts — they're automatically resumed when the API starts.
 
 ---
 
