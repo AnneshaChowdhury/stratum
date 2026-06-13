@@ -85,3 +85,18 @@ class QualityResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     source: Mapped["DataSource"] = relationship(back_populates="quality_results")
+
+
+class KafkaTopicSource(Base):
+    """Tracks a Kafka topic registered as a Stratum data source."""
+    __tablename__ = "kafka_topic_sources"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    topic: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    bootstrap_servers: Mapped[str] = mapped_column(String(512), nullable=False)
+    source_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("data_sources.id"), nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=False)
+    messages_consumed: Mapped[int] = mapped_column(Integer, default=0)
+    last_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
