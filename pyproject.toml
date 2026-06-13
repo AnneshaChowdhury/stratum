@@ -24,6 +24,7 @@ dependencies = [
     "aiofiles>=23.2.0",
     "rich>=13.7.0",
     "aiokafka>=0.11.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]

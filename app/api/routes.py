@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.agents.dbt_agent import artifacts_to_zip, generate_dbt_artifacts
 from app.agents.drift_agent import detect_drift
 from app.agents.inference_agent import infer_schema
 from app.agents.modeling_agent import build_data_model
@@ -212,3 +214,63 @@ async def get_ddl(source_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         ddl_statements.append(ddl)
 
     return {"ddl": "\n\n".join(ddl_statements), "version": version.version}
+
+
+@router.get("/sources/{source_id}/dbt", summary="Generate dbt models from latest schema")
+async def get_dbt(
+    source_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    version, source = await _latest_version_and_source(source_id, db)
+
+    source_name = source.name.replace("kafka:", "").replace("/", "_").replace(".", "_")
+    artifacts = generate_dbt_artifacts(
+        version.inferred_schema,
+        version.data_model or {},
+        version.quality_rules or {},
+        source_name=source_name,
+    )
+    return {"artifacts": artifacts, "version": version.version, "file_count": len(artifacts)}
+
+
+@router.get("/sources/{source_id}/dbt/zip", summary="Download dbt models as a zip file")
+async def get_dbt_zip(
+    source_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    version, source = await _latest_version_and_source(source_id, db)
+
+    source_name = source.name.replace("kafka:", "").replace("/", "_").replace(".", "_")
+    artifacts = generate_dbt_artifacts(
+        version.inferred_schema,
+        version.data_model or {},
+        version.quality_rules or {},
+        source_name=source_name,
+    )
+    zip_bytes = artifacts_to_zip(artifacts)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=stratum_dbt_{source_name}.zip"},
+    )
+
+
+async def _latest_version_and_source(
+    source_id: uuid.UUID, db: AsyncSession
+) -> tuple:
+    result = await db.execute(
+        select(SchemaVersion)
+        .where(SchemaVersion.source_id == source_id)
+        .order_by(SchemaVersion.version.desc())
+        .limit(1)
+    )
+    version = result.scalar_one_or_none()
+    if not version or not version.inferred_schema:
+        raise HTTPException(404, "No schema version found for this source")
+
+    src_result = await db.execute(select(DataSource).where(DataSource.id == source_id))
+    source = src_result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(404, "Source not found")
+
+    return version, source
