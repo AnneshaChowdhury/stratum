@@ -23,6 +23,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "aiofiles>=23.2.0",
     "rich>=13.7.0",
+    "aiokafka>=0.11.0",
 ]
 
 [project.optional-dependencies]
