@@ -56,6 +56,26 @@ services:
         condition: service_healthy
     volumes:
       - ./app:/app/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
+  seed:
+    build: .
+    command: python scripts/seed.py
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stratum:stratum@db:5432/stratum
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+    restart: "no"
 
 volumes:
   pgdata:
